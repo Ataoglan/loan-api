@@ -24,4 +24,14 @@ public enum NumberOfInstallments {
         }
         throw new IllegalArgumentException("Invalid installment number: " + value);
     }
+
+    public static boolean isValidValue(int value) {
+        for (NumberOfInstallments installment : NumberOfInstallments.values()) {
+            if (installment.getValue() == value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
