@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -31,11 +32,11 @@ public class LoanInstallmentEntity {
 
     @Column(name = "due_date", nullable = false)
     @Temporal(TemporalType.DATE)
-    private Date dueDate;
+    private LocalDate dueDate;
 
     @Column(name = "payment_date")
     @Temporal(TemporalType.DATE)
-    private Date paymentDate;
+    private LocalDate paymentDate;
 
     @Column(name = "is_paid", nullable = false)
     private Boolean isPaid = false;

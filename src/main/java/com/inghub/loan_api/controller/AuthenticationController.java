@@ -1,8 +1,9 @@
 package com.inghub.loan_api.controller;
 
+import com.inghub.loan_api.models.request.authentication.SigninRequest;
 import com.inghub.loan_api.models.request.authentication.SignupRequest;
+import com.inghub.loan_api.models.response.common.ApiResponse;
 import com.inghub.loan_api.service.AuthenticationService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +21,13 @@ public class AuthenticationController {
     };
 
     @PostMapping("signup")
-    public void signup(@RequestBody SignupRequest request) {
+    public ApiResponse signup(@RequestBody SignupRequest request) {
         authenticationService.signup(request);
+        return ApiResponse.success();
+    }
+
+    @PostMapping("signin")
+    public ApiResponse signin(@RequestBody SigninRequest request) {
+        return ApiResponse.success(authenticationService.signin(request));
     }
 }
