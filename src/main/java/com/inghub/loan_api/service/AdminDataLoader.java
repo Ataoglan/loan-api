@@ -21,11 +21,12 @@ public class AdminDataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         if (userRepository.findByUsername("admin").isEmpty()) {
-            UserEntity admin = new UserEntity();
-            admin.setUsername("admin");
-            admin.setPassword(passwordEncoder.encode("admin"));
-            admin.setRole(UserRole.ADMIN);
-            admin.setIsActive(true);
+            UserEntity admin = UserEntity.builder()
+                    .username("admin")
+                    .password("admin")
+                    .role(UserRole.ADMIN)
+                    .isActive(true)
+                    .build();
 
             userRepository.save(admin);
         }

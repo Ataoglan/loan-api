@@ -18,18 +18,18 @@ public class CustomerEntity {
 
     @OneToOne
     @MapsId
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "id")
     private UserEntity user;
 
-    @Column(name = "name")
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "surname")
+    @Column(name = "surname", nullable = false)
     private String surname;
 
     @Column(name = "credit_limit", nullable = false)
     private Double creditLimit;
 
-    @Column(name = "used_credit_limit")
+    @Column(name = "used_credit_limit", nullable = false)
     private Double usedCreditLimit = 0.0;
 }
