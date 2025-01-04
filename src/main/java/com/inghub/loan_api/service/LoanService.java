@@ -6,6 +6,7 @@ import com.inghub.loan_api.models.entities.LoanInstallmentEntity;
 import com.inghub.loan_api.models.enums.NumberOfInstallments;
 import com.inghub.loan_api.models.enums.UserRole;
 import com.inghub.loan_api.models.request.loan.CreateLoanRequest;
+import com.inghub.loan_api.models.request.loan.LoanPaymentRequest;
 import com.inghub.loan_api.repository.CustomerRepository;
 import com.inghub.loan_api.repository.LoanInstallmentRepository;
 import com.inghub.loan_api.repository.LoanRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +45,7 @@ public class LoanService {
 
         validateInterestRate(request.getInterestRate());
 
-        Double totalAmount = request.getLoanAmount()*(request.getInterestRate()+1);
+        Double totalAmount = request.getLoanAmount() * (request.getInterestRate() + 1);
         LoanEntity loan = new LoanEntity();
         loan.setCustomer(customer);
         loan.setLoanAmount(request.getLoanAmount());
@@ -56,6 +58,68 @@ public class LoanService {
         updateCustomerCreditLimit(customer, request.getLoanAmount());
 
         return loan;
+    }
+
+    @Transactional
+    public void payLoanInstallments(LoanPaymentRequest request) {
+        LoanEntity loan = loanRepository.findById(request.getLoanId())
+                .orElseThrow(() -> new IllegalArgumentException("Loan not found"));
+
+        List<LoanInstallmentEntity> installments = loanInstallmentRepository
+                .findUnpaidInstallmentsByLoanId(request.getLoanId());
+        if (installments.isEmpty()) {
+            throw new IllegalStateException("No unpaid installments available for this loan.");
+        }
+
+        double remainingPayment = request.getPaymentAmount();
+        int installmentsPaid = 0;
+        double totalSpent = 0;
+
+        for (LoanInstallmentEntity installment : installments) {
+            if (isBeyondThreeMonths(installment.getDueDate())) {
+                continue;
+            }
+
+            double installmentAmount = calculateAdjustedInstallmentAmount(installment);
+            if (remainingPayment >= installmentAmount) {
+                remainingPayment -= installmentAmount;
+                totalSpent += installmentAmount;
+
+                installment.setIsPaid(true);
+                installment.setPaidAmount(installmentAmount);
+                installment.setPaymentDate(LocalDate.now());
+                loanInstallmentRepository.save(installment);
+
+                installmentsPaid++;
+            } else {
+                break;
+            }
+        }
+
+        if (installments.stream().allMatch(LoanInstallmentEntity::getIsPaid)) {
+            loan.setIsPaid(true);
+            loanRepository.save(loan);
+        }
+
+    }
+
+    private double calculateAdjustedInstallmentAmount(LoanInstallmentEntity installment) {
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(installment.getDueDate())) {
+            long daysBefore = ChronoUnit.DAYS.between(today, installment.getDueDate());
+            return installment.getAmount() - (installment.getAmount() * 0.001 * daysBefore);
+        } else if (today.isAfter(installment.getDueDate())) {
+            long daysAfter = ChronoUnit.DAYS.between(installment.getDueDate(), today);
+            return installment.getAmount() + (installment.getAmount() * 0.001 * daysAfter);
+        } else {
+            return installment.getAmount();
+        }
+    }
+
+    private boolean isBeyondThreeMonths(LocalDate dueDate) {
+        LocalDate today = LocalDate.now();
+        LocalDate maxPaymentDate = today.plusMonths(3);
+        return dueDate.isAfter(maxPaymentDate);
     }
 
     private CustomerEntity validateUser(Long customerId) {
