@@ -1,5 +1,6 @@
 package com.inghub.loan_api.models;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,6 +10,7 @@ import java.util.Collection;
 
 @Builder
 @Data
+@AllArgsConstructor
 public class CustomUserDetails implements UserDetails {
     private final Long id;
     private final String tckn;
