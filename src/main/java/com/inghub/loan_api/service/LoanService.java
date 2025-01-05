@@ -8,6 +8,7 @@ import com.inghub.loan_api.models.enums.NumberOfInstallments;
 import com.inghub.loan_api.models.request.loan.CreateLoanRequest;
 import com.inghub.loan_api.models.request.loan.LoanPaymentRequest;
 import com.inghub.loan_api.models.response.loan.CreateLoanResponse;
+import com.inghub.loan_api.models.response.loan.GetLoanResponse;
 import com.inghub.loan_api.models.response.loan.LoanPaymentResponse;
 import com.inghub.loan_api.repository.LoanInstallmentRepository;
 import com.inghub.loan_api.repository.LoanRepository;
@@ -115,6 +116,18 @@ public class LoanService {
         loanPaymentResponse.setLoanFullyPaid(loan.getIsPaid());
 
         return loanPaymentResponse;
+    }
+
+    public List<GetLoanResponse> getLoans(Long customerId, Boolean isPaid, NumberOfInstallments installmentNumber) {
+        List<LoanEntity> loans = loanRepository.findLoansByCustomerAndFilters(customerId,
+                isPaid, installmentNumber);
+
+        return loans.stream().map(loan -> GetLoanResponse.builder()
+                .customerId(loan.getCustomer().getId())
+                .loanAmount(loan.getLoanAmount())
+                .numberOfInstallment(loan.getNumberOfInstallment())
+                .isPaid(loan.getIsPaid())
+                .build()).toList();
     }
 
     private LoanPaymentResponse loanInstallmentsPayment(List<LoanInstallmentEntity> installments,

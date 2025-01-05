@@ -25,11 +25,11 @@ public class AdminDataLoader implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (userRepository.findByTckn("111").isEmpty()) {
+        if (userRepository.findByTckn("11111111111").isEmpty()) {
             UserEntity admin = UserEntity.builder()
                     .name("ADMIN")
                     .password(passwordEncoder.encode("admin"))
-                    .tckn("111")
+                    .tckn("11111111111")
                     .role(UserRole.ADMIN)
                     .isActive(true)
                     .build();

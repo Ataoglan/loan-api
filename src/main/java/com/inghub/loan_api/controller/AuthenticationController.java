@@ -4,6 +4,7 @@ import com.inghub.loan_api.models.request.authentication.SigninRequest;
 import com.inghub.loan_api.models.request.authentication.SignupRequest;
 import com.inghub.loan_api.models.response.common.ApiResponse;
 import com.inghub.loan_api.service.AuthenticationService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,13 +20,13 @@ public class AuthenticationController {
     };
 
     @PostMapping("signup")
-    public ApiResponse signup(@RequestBody SignupRequest request) {
+    public ApiResponse signup(@Valid @RequestBody SignupRequest request) {
         authenticationService.signup(request);
         return ApiResponse.success("Signup successful. Welcome!");
     }
 
     @PostMapping("signin")
-    public ApiResponse signin(@RequestBody SigninRequest request) {
+    public ApiResponse signin(@Valid @RequestBody SigninRequest request) {
         return ApiResponse.success(authenticationService.signin(request));
     }
 }
