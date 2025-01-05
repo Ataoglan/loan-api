@@ -1,10 +1,12 @@
-package com.inghub.loan_api.models.entities;
+package com.inghub.loan_api.models.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Entity
 @Setter
@@ -28,8 +30,8 @@ public class CustomerEntity {
     private String surname;
 
     @Column(name = "credit_limit", nullable = false)
-    private Double creditLimit;
+    private BigDecimal creditLimit;
 
     @Column(name = "used_credit_limit", nullable = false)
-    private Double usedCreditLimit = 0.0;
+    private BigDecimal usedCreditLimit = BigDecimal.valueOf(0.0);
 }

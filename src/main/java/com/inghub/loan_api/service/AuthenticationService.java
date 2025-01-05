@@ -1,73 +1,80 @@
 package com.inghub.loan_api.service;
 
-import com.inghub.loan_api.models.entities.CustomerEntity;
-import com.inghub.loan_api.models.entities.UserEntity;
+import com.inghub.loan_api.exception.ProblemDetailsException;
+import com.inghub.loan_api.models.CustomUserDetails;
+import com.inghub.loan_api.models.entity.CustomerEntity;
+import com.inghub.loan_api.models.entity.UserEntity;
 import com.inghub.loan_api.models.enums.UserRole;
 import com.inghub.loan_api.models.request.authentication.SigninRequest;
 import com.inghub.loan_api.models.request.authentication.SignupRequest;
 import com.inghub.loan_api.models.response.authentication.SigninResponse;
-import com.inghub.loan_api.repository.CustomerRepository;
 import com.inghub.loan_api.repository.UserRepository;
-import com.inghub.loan_api.utils.JwtAuthenticationFilter;
 import com.inghub.loan_api.utils.JwtUtil;
 import jakarta.transaction.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class AuthenticationService {
     private final UserRepository userRepository;
-    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
 
-    public AuthenticationService(UserRepository userRepository, CustomerRepository customerRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
-        this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
     }
 
     @Transactional
     public void signup(SignupRequest request) {
-        if (userRepository.findByTckn(request.getTckn()).isPresent()) {
-            //todo exception
-        }
+        userRepository.findByTckn(request.getTckn())
+                .ifPresent(userEntity -> {
+                    ProblemDetail problemDetail = ProblemDetail
+                            .forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                                    "User found with TCKN: " + request.getTckn());
+                    problemDetail.setTitle("User Already Exists");
+
+                    throw new ProblemDetailsException(problemDetail);
+                });
 
         UserEntity user = UserEntity.builder()
                 .tckn(request.getTckn())
                 .name(request.getName() + " " + request.getSurname())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(UserRole.CUSTOMER)
                 .isActive(true)
                 .build();
 
-        if (request.getRole().equals(UserRole.CUSTOMER)) {
-            CustomerEntity customer = new CustomerEntity();
-            customer.setName(request.getName());
-            customer.setSurname(request.getSurname());
-            customer.setUser(user);
-            customer.setCreditLimit(request.getCreditLimit());
-            user.setCustomer(customer);
-        }
+        CustomerEntity customer = new CustomerEntity();
+        customer.setName(request.getName());
+        customer.setSurname(request.getSurname());
+        customer.setUser(user);
+        customer.setCreditLimit(request.getCreditLimit());
+        user.setCustomer(customer);
 
         userRepository.save(user);
     }
 
     public SigninResponse signin(SigninRequest request) {
-        Optional<UserEntity> userOptional = userRepository.findByTckn(request.getTckn());
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getTckn(), request.getPassword())
+        );
 
-        if (userOptional.isPresent()) {
-            UserEntity user = userOptional.get();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-            if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                String token = jwtUtil.generateToken(user.getTckn(), user.getRole().name(), request.getUserId());
-                return SigninResponse.builder().token(token).build();
-            }
-        }
+        String token = jwtUtil.generateToken(userDetails.getTckn(), userDetails.getAuthorities().toString(),
+                userDetails.getId());
 
-        return null; //todo exception
+        return SigninResponse.builder()
+                .token(token)
+                .build();
     }
 }

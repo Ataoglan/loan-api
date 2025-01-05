@@ -19,6 +19,7 @@ springdoc:
     path: /api-docs
   swagger-ui:
     url:.
+  override-with-generic-response: false
 
 
 logging:

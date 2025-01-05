@@ -1,4 +1,4 @@
-package com.inghub.loan_api.models.entities;
+package com.inghub.loan_api.models.entity;
 
 import com.inghub.loan_api.models.enums.UserRole;
 import jakarta.persistence.*;

@@ -1,7 +1,6 @@
 package com.inghub.loan_api.service;
 
-import com.inghub.loan_api.models.entities.CustomerEntity;
-import com.inghub.loan_api.models.entities.UserEntity;
+import com.inghub.loan_api.models.entity.UserEntity;
 import com.inghub.loan_api.models.enums.UserRole;
 import com.inghub.loan_api.repository.CustomerRepository;
 import com.inghub.loan_api.repository.UserRepository;

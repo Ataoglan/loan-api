@@ -1,6 +1,6 @@
 package com.inghub.loan_api.repository;
 
-import com.inghub.loan_api.models.entities.LoanInstallmentEntity;
+import com.inghub.loan_api.models.entity.LoanInstallmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

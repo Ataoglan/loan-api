@@ -1,19 +1,24 @@
 package com.inghub.loan_api.service;
 
-import com.inghub.loan_api.models.entities.CustomerEntity;
-import com.inghub.loan_api.models.entities.LoanEntity;
-import com.inghub.loan_api.models.entities.LoanInstallmentEntity;
+import com.inghub.loan_api.exception.ProblemDetailsException;
+import com.inghub.loan_api.models.entity.CustomerEntity;
+import com.inghub.loan_api.models.entity.LoanEntity;
+import com.inghub.loan_api.models.entity.LoanInstallmentEntity;
 import com.inghub.loan_api.models.enums.NumberOfInstallments;
-import com.inghub.loan_api.models.enums.UserRole;
 import com.inghub.loan_api.models.request.loan.CreateLoanRequest;
 import com.inghub.loan_api.models.request.loan.LoanPaymentRequest;
-import com.inghub.loan_api.repository.CustomerRepository;
+import com.inghub.loan_api.models.response.loan.CreateLoanResponse;
+import com.inghub.loan_api.models.response.loan.LoanPaymentResponse;
 import com.inghub.loan_api.repository.LoanInstallmentRepository;
 import com.inghub.loan_api.repository.LoanRepository;
-import com.inghub.loan_api.utils.JwtUtil;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -21,69 +26,109 @@ import java.util.List;
 
 @Service
 public class LoanService {
-
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private final LoanRepository loanRepository;
     private final LoanInstallmentRepository loanInstallmentRepository;
-    private final JwtUtil jwtUtil;
 
-    public LoanService(CustomerRepository customerRepository, LoanRepository loanRepository,
-                       LoanInstallmentRepository loanInstallmentRepository, JwtUtil jwtUtil) {
-        this.customerRepository = customerRepository;
+    public LoanService(CustomerService customerService, LoanRepository loanRepository,
+                       LoanInstallmentRepository loanInstallmentRepository) {
+        this.customerService = customerService;
         this.loanRepository = loanRepository;
         this.loanInstallmentRepository = loanInstallmentRepository;
-        this.jwtUtil = jwtUtil;
     }
 
     @Transactional
-    public LoanEntity createLoan(CreateLoanRequest request) {
-        CustomerEntity customer = validateUser(request.getCustomerId());
+    public CreateLoanResponse createLoan(CreateLoanRequest request) {
+
+        CustomerEntity customer = customerService.getById(request.getCustomerId())
+                .orElseThrow(() -> {
+                    ProblemDetail problemDetail = ProblemDetail
+                            .forStatusAndDetail(HttpStatus.NOT_FOUND,
+                                    "Customer not found with ID: " + request.getCustomerId());
+                    problemDetail.setTitle("Customer Not Found");
+
+                    return new ProblemDetailsException(problemDetail);
+                });
 
         validateCreditLimit(customer, request.getLoanAmount());
 
-        validateInstallmentNumber(request.getInstallmentNumber());
+        BigDecimal totalAmount = request.getLoanAmount().multiply(BigDecimal.valueOf(request.getInterestRate()+1));
 
-        validateInterestRate(request.getInterestRate());
-
-        Double totalAmount = request.getLoanAmount() * (request.getInterestRate() + 1);
         LoanEntity loan = new LoanEntity();
         loan.setCustomer(customer);
         loan.setLoanAmount(request.getLoanAmount());
-        loan.setNumberOfInstallment(NumberOfInstallments.fromValue(request.getInstallmentNumber()));
+        loan.setNumberOfInstallment(NumberOfInstallments.fromValue(request.getInstallmentNumber().getValue()));
         loan.setIsPaid(false);
         loanRepository.save(loan);
 
-        createInstallments(loan, request.getInstallmentNumber(), totalAmount);
+        createInstallments(loan, request.getInstallmentNumber().getValue(), totalAmount);
 
-        updateCustomerCreditLimit(customer, request.getLoanAmount());
+        customerService.updateCustomerUsedCreditLimit(customer, request.getLoanAmount());
 
-        return loan;
+        return CreateLoanResponse.builder()
+                .customerId(customer.getId())
+                .numberOfInstallment(request.getInstallmentNumber())
+                .isPaid(false)
+                .loanAmount(loan.getLoanAmount())
+                .build();
     }
 
     @Transactional
-    public void payLoanInstallments(LoanPaymentRequest request) {
+    public LoanPaymentResponse payLoanInstallments(LoanPaymentRequest request) {
         LoanEntity loan = loanRepository.findById(request.getLoanId())
-                .orElseThrow(() -> new IllegalArgumentException("Loan not found"));
+                .orElseThrow(() -> {
+                    ProblemDetail problemDetail = ProblemDetail
+                            .forStatusAndDetail(HttpStatus.NOT_FOUND,
+                                    "Loan not found with ID: " + request.getLoanId());
+                    problemDetail.setTitle("Loan Not Found");
+
+                    return new ProblemDetailsException(problemDetail);
+                });
 
         List<LoanInstallmentEntity> installments = loanInstallmentRepository
                 .findUnpaidInstallmentsByLoanId(request.getLoanId());
+
         if (installments.isEmpty()) {
-            throw new IllegalStateException("No unpaid installments available for this loan.");
+            ProblemDetail problemDetail = ProblemDetail
+                    .forStatusAndDetail(HttpStatus.NOT_FOUND,
+                            "No unpaid installments available for this loan. Loan ID: " +
+                                    request.getLoanId());
+
+            problemDetail.setTitle("Loan Installments Not Found");
+
+            throw new ProblemDetailsException(problemDetail);
         }
 
-        double remainingPayment = request.getPaymentAmount();
+        BigDecimal remainingPayment = request.getPaymentAmount();
         int installmentsPaid = 0;
-        double totalSpent = 0;
+        BigDecimal totalSpent = BigDecimal.valueOf(0);
+
+        LoanPaymentResponse loanPaymentResponse =
+                loanInstallmentsPayment(installments, remainingPayment, totalSpent, installmentsPaid);
+
+        if (installments.stream().allMatch(LoanInstallmentEntity::getIsPaid)) {
+            loan.setIsPaid(true);
+            loanRepository.save(loan);
+            customerService.updateCustomerLimit(request.getCustomerId(), loan.getLoanAmount());
+        }
+
+        loanPaymentResponse.setLoanFullyPaid(loan.getIsPaid());
+
+        return loanPaymentResponse;
+    }
+
+    private LoanPaymentResponse loanInstallmentsPayment(List<LoanInstallmentEntity> installments,
+                                         BigDecimal remainingPayment, BigDecimal totalSpent, int installmentsPaid) {
 
         for (LoanInstallmentEntity installment : installments) {
             if (isBeyondThreeMonths(installment.getDueDate())) {
                 continue;
             }
 
-            double installmentAmount = calculateAdjustedInstallmentAmount(installment);
-            if (remainingPayment >= installmentAmount) {
-                remainingPayment -= installmentAmount;
-                totalSpent += installmentAmount;
+            BigDecimal installmentAmount = calculateAdjustedInstallmentAmount(installment);
+            if (remainingPayment.compareTo(installmentAmount) >= 0) {
+                remainingPayment = remainingPayment.subtract(installmentAmount);
+                totalSpent = totalSpent.add(installmentAmount);
 
                 installment.setIsPaid(true);
                 installment.setPaidAmount(installmentAmount);
@@ -96,21 +141,25 @@ public class LoanService {
             }
         }
 
-        if (installments.stream().allMatch(LoanInstallmentEntity::getIsPaid)) {
-            loan.setIsPaid(true);
-            loanRepository.save(loan);
-        }
-
+        return new LoanPaymentResponse(installmentsPaid, totalSpent, remainingPayment, false);
     }
 
-    private double calculateAdjustedInstallmentAmount(LoanInstallmentEntity installment) {
+    private BigDecimal calculateAdjustedInstallmentAmount(LoanInstallmentEntity installment) {
         LocalDate today = LocalDate.now();
         if (today.isBefore(installment.getDueDate())) {
             long daysBefore = ChronoUnit.DAYS.between(today, installment.getDueDate());
-            return installment.getAmount() - (installment.getAmount() * 0.001 * daysBefore);
+            BigDecimal discount = installment.getAmount()
+                    .multiply(BigDecimal.valueOf(0.001))
+                    .multiply(BigDecimal.valueOf(daysBefore));
+
+            return installment.getAmount().subtract(discount);
         } else if (today.isAfter(installment.getDueDate())) {
             long daysAfter = ChronoUnit.DAYS.between(installment.getDueDate(), today);
-            return installment.getAmount() + (installment.getAmount() * 0.001 * daysAfter);
+            BigDecimal penalty = installment.getAmount()
+                    .multiply(BigDecimal.valueOf(0.001))
+                    .multiply(BigDecimal.valueOf(daysAfter));
+
+            return installment.getAmount().add(penalty);
         } else {
             return installment.getAmount();
         }
@@ -122,38 +171,26 @@ public class LoanService {
         return dueDate.isAfter(maxPaymentDate);
     }
 
-    private CustomerEntity validateUser(Long customerId) {
-        String role = jwtUtil.extractRoleFromToken();
-        Long userId = jwtUtil.extractUserIdFromToken();
-        if (UserRole.CUSTOMER.toString().equals(role) && !userId.equals(customerId)) {
-            //todo throw exception
-        }
+    private void validateCreditLimit(CustomerEntity customer, BigDecimal loanAmount) {
+        BigDecimal availableLimit = customer.getCreditLimit().subtract(customer.getUsedCreditLimit());
 
-        return customerRepository.findById(customerId)
-                .orElseThrow(null);
-    }
+        if (loanAmount.compareTo(availableLimit) > 0) {
+            ProblemDetail problemDetail = ProblemDetail
+                    .forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                            "Loan amount exceeds available credit limit.");
+            problemDetail.setTitle("Credit Limit Exceeded");
+            problemDetail.setInstance(URI.create("/loans/validate-credit-limit"));
+            problemDetail.setProperty("availableLimit", availableLimit);
+            problemDetail.setProperty("requestedAmount", loanAmount);
 
-    private void validateCreditLimit(CustomerEntity customer, Double loanAmount) {
-        double availableLimit = customer.getCreditLimit() - customer.getUsedCreditLimit();
-        if (loanAmount > availableLimit) {
-            //todo exception
+            throw new ProblemDetailsException(problemDetail);
         }
     }
 
-    private void validateInstallmentNumber(int installmentNumber) {
-        if (!NumberOfInstallments.isValidValue(installmentNumber)) {
-            //todo exception
-        }
-    }
+    private void createInstallments(LoanEntity loan, int installmentNumber, BigDecimal totalAmount) {
+        BigDecimal installmentAmount = totalAmount.divide(BigDecimal.valueOf(installmentNumber),
+                2, RoundingMode.HALF_UP);
 
-    private void validateInterestRate(Double interestRate) {
-        if (interestRate < 0.1 || interestRate > 0.5) {
-            //todo exception
-        }
-    }
-
-    private void createInstallments(LoanEntity loan, int installmentNumber, Double totalAmount) {
-        double installmentAmount = totalAmount / installmentNumber;
         List<LoanInstallmentEntity> installments = new ArrayList<>();
         LocalDate dueDate = LocalDate.now().plusMonths(1).withDayOfMonth(1);
 
@@ -161,7 +198,7 @@ public class LoanService {
             LoanInstallmentEntity installment = new LoanInstallmentEntity();
             installment.setLoan(loan);
             installment.setAmount(installmentAmount);
-            installment.setPaidAmount(0.0);
+            installment.setPaidAmount(BigDecimal.valueOf(0.0));
             installment.setDueDate(dueDate);
             installment.setIsPaid(false);
             installments.add(installment);
@@ -169,11 +206,5 @@ public class LoanService {
         }
 
         loanInstallmentRepository.saveAll(installments);
-    }
-
-    private void updateCustomerCreditLimit(CustomerEntity customer, Double loanAmount) {
-        customer.setUsedCreditLimit(customer.getUsedCreditLimit() + loanAmount);
-        customer.setCreditLimit(customer.getCreditLimit() - loanAmount);
-        customerRepository.save(customer);
     }
 }

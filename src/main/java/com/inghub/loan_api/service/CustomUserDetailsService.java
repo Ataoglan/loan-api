@@ -2,7 +2,7 @@ package com.inghub.loan_api.service;
 
 
 import com.inghub.loan_api.models.CustomUserDetails;
-import com.inghub.loan_api.models.entities.UserEntity;
+import com.inghub.loan_api.models.entity.UserEntity;
 import com.inghub.loan_api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,6 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         return CustomUserDetails.builder()
                 .id(user.getId())
+                .tckn(user.getTckn())
                 .username(user.getName())
                 .password(user.getPassword())
                 .authorities(List.of(new SimpleGrantedAuthority(user.getRole().name())))

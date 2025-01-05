@@ -1,4 +1,4 @@
-package com.inghub.loan_api.models.entities;
+package com.inghub.loan_api.models.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Date;
 
 @Entity
 @Setter
@@ -25,10 +25,10 @@ public class LoanInstallmentEntity {
     private LoanEntity loan;
 
     @Column(name = "amount", nullable = false)
-    private Double amount;
+    private BigDecimal amount;
 
     @Column(name = "paid_amount", nullable = false)
-    private Double paidAmount = 0.0;
+    private BigDecimal paidAmount = BigDecimal.valueOf(0.0);
 
     @Column(name = "due_date", nullable = false)
     @Temporal(TemporalType.DATE)

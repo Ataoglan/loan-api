@@ -1,7 +1,6 @@
 package com.inghub.loan_api.config;
 
 import com.inghub.loan_api.utils.JwtAuthenticationFilter;
-import com.inghub.loan_api.utils.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
