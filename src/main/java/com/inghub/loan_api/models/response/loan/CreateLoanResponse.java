@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Data
@@ -14,8 +15,9 @@ import java.util.Date;
 public class CreateLoanResponse {
 
     private Long customerId;
+    private Long loanId;
     private BigDecimal loanAmount;
-    private NumberOfInstallments numberOfInstallment;
-    private Date createdAt;
+    private int numberOfInstallment;
+    private LocalDate createdAt;
     private Boolean isPaid;
 }

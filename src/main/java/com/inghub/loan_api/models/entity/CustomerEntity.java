@@ -30,7 +30,7 @@ public class CustomerEntity {
     private String surname;
 
     @Column(name = "credit_limit", nullable = false)
-    private BigDecimal creditLimit;
+    private BigDecimal creditLimit= BigDecimal.valueOf(0.0);
 
     @Column(name = "used_credit_limit", nullable = false)
     private BigDecimal usedCreditLimit = BigDecimal.valueOf(0.0);

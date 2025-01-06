@@ -58,18 +58,20 @@ public class LoanService {
         LoanEntity loan = new LoanEntity();
         loan.setCustomer(customer);
         loan.setLoanAmount(request.getLoanAmount());
-        loan.setNumberOfInstallment(NumberOfInstallments.fromValue(request.getInstallmentNumber().getValue()));
+        loan.setNumberOfInstallment(NumberOfInstallments.fromValue(request.getInstallmentNumber()));
         loan.setIsPaid(false);
-        loanRepository.save(loan);
+        LoanEntity savedLoan = loanRepository.save(loan);
 
-        createInstallments(loan, request.getInstallmentNumber().getValue(), totalAmount);
+        createInstallments(loan, request.getInstallmentNumber(), totalAmount);
 
         customerService.updateCustomerUsedCreditLimit(customer, request.getLoanAmount());
 
         return CreateLoanResponse.builder()
                 .customerId(customer.getId())
+                .loanId(savedLoan.getId())
                 .numberOfInstallment(request.getInstallmentNumber())
                 .isPaid(false)
+                .createdAt(LocalDate.now())
                 .loanAmount(loan.getLoanAmount())
                 .build();
     }
@@ -110,7 +112,7 @@ public class LoanService {
         if (installments.stream().allMatch(LoanInstallmentEntity::getIsPaid)) {
             loan.setIsPaid(true);
             loanRepository.save(loan);
-            customerService.updateCustomerLimit(request.getCustomerId(), loan.getLoanAmount());
+            customerService.recoverCustomerLimit(request.getCustomerId(), loan.getLoanAmount());
         }
 
         loanPaymentResponse.setLoanFullyPaid(loan.getIsPaid());
@@ -125,7 +127,7 @@ public class LoanService {
         return loans.stream().map(loan -> GetLoanResponse.builder()
                 .customerId(loan.getCustomer().getId())
                 .loanAmount(loan.getLoanAmount())
-                .numberOfInstallment(loan.getNumberOfInstallment())
+                .numberOfInstallment(loan.getNumberOfInstallment().getValue())
                 .isPaid(loan.getIsPaid())
                 .build()).toList();
     }

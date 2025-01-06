@@ -20,7 +20,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -51,27 +50,22 @@ class AuthenticationServiceTest {
 
     @Test
     void signup_ShouldCreateNewUser_WhenTcknNotExists() {
-        // Arrange
         SignupRequest request = new SignupRequest();
         request.setTckn("12345678901");
-        request.setName("John");
-        request.setSurname("Doe");
+            request.setName("Ozcan");
+        request.setSurname("Ata");
         request.setPassword("password");
-        request.setCreditLimit(BigDecimal.valueOf(10000));
 
         when(userRepository.findByTckn("12345678901")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
 
-        // Act
         authenticationService.signup(request);
 
-        // Assert
         verify(userRepository, times(1)).save(any(UserEntity.class));
     }
 
     @Test
     void signup_ShouldThrowException_WhenTcknExists() {
-        // Arrange
         SignupRequest request = new SignupRequest();
         request.setTckn("12345678901");
 
@@ -80,7 +74,6 @@ class AuthenticationServiceTest {
 
         when(userRepository.findByTckn("12345678901")).thenReturn(Optional.of(existingUser));
 
-        // Act & Assert
         ProblemDetailsException exception = assertThrows(ProblemDetailsException.class,
                 () -> authenticationService.signup(request));
         assertEquals("User Already Exists", exception.getProblemDetail().getTitle());
@@ -89,7 +82,6 @@ class AuthenticationServiceTest {
 
     @Test
     void signin_ShouldReturnToken_WhenCredentialsAreValid() {
-        // Arrange
         SigninRequest request = new SigninRequest();
         request.setTckn("12345678901");
         request.setPassword("password");
@@ -109,17 +101,14 @@ class AuthenticationServiceTest {
         when(jwtUtil.generateToken("12345678901", "[CUSTOMER]", 1L))
                 .thenReturn("mocked-jwt-token");
 
-        // Act
         SigninResponse response = authenticationService.signin(request);
 
-        // Assert
         assertNotNull(response);
         assertEquals("mocked-jwt-token", response.getToken());
     }
 
     @Test
     void signin_ShouldThrowException_WhenAuthenticationFails() {
-        // Arrange
         SigninRequest request = new SigninRequest();
         request.setTckn("12345678901");
         request.setPassword("wrong-password");
@@ -127,7 +116,6 @@ class AuthenticationServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new RuntimeException("Authentication failed"));
 
-        // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> authenticationService.signin(request));
         assertEquals("Authentication failed", exception.getMessage());

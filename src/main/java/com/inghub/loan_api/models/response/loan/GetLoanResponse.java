@@ -11,6 +11,6 @@ import java.math.BigDecimal;
 public class GetLoanResponse {
     private Long customerId;
     private BigDecimal loanAmount;
-    private NumberOfInstallments numberOfInstallment;
+    private int numberOfInstallment;
     private Boolean isPaid;
 }

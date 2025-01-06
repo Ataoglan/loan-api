@@ -57,7 +57,6 @@ public class AuthenticationService {
         customer.setName(request.getName());
         customer.setSurname(request.getSurname());
         customer.setUser(user);
-        customer.setCreditLimit(request.getCreditLimit());
         user.setCustomer(customer);
 
         userRepository.save(user);

@@ -54,14 +54,22 @@ class LoanServiceTest {
         request.setCustomerId(1L);
         request.setLoanAmount(BigDecimal.valueOf(10000));
         request.setInterestRate(0.1);
-        request.setInstallmentNumber(NumberOfInstallments.TWELVE);
+        request.setInstallmentNumber(NumberOfInstallments.TWELVE.getValue());
 
         CustomerEntity customer = new CustomerEntity();
         customer.setId(1L);
         customer.setCreditLimit(BigDecimal.valueOf(20000));
         customer.setUsedCreditLimit(BigDecimal.valueOf(5000));
 
+        LoanEntity loanEntity = new LoanEntity();
+        loanEntity.setId(1L);
+        loanEntity.setCustomer(customer);
+        loanEntity.setLoanAmount(BigDecimal.valueOf(10000));
+        loanEntity.setNumberOfInstallment(NumberOfInstallments.TWELVE);
+        loanEntity.setIsPaid(false);
+
         when(customerService.getById(1L)).thenReturn(Optional.of(customer));
+        when(loanRepository.save(any(LoanEntity.class))).thenReturn(loanEntity);
 
         // Act
         loanService.createLoan(request);
@@ -120,10 +128,8 @@ class LoanServiceTest {
         when(loanRepository.findById(1L)).thenReturn(Optional.of(loan));
         when(loanInstallmentRepository.findUnpaidInstallmentsByLoanId(1L)).thenReturn(installments);
 
-        // Act
         LoanPaymentResponse response = loanService.payLoanInstallments(request);
 
-        // Assert
         assertNotNull(response);
 
         assertEquals(
@@ -138,7 +144,6 @@ class LoanServiceTest {
 
     @Test
     void payLoanInstallments_ShouldThrowException_WhenNoUnpaidInstallments() {
-        // Arrange
         LoanPaymentRequest request = new LoanPaymentRequest();
         request.setLoanId(1L);
         request.setCustomerId(1L);
@@ -146,7 +151,6 @@ class LoanServiceTest {
         when(loanRepository.findById(1L)).thenReturn(Optional.of(new LoanEntity()));
         when(loanInstallmentRepository.findUnpaidInstallmentsByLoanId(1L)).thenReturn(Collections.emptyList());
 
-        // Act & Assert
         ProblemDetailsException exception = assertThrows(ProblemDetailsException.class,
                 () -> loanService.payLoanInstallments(request));
         assertEquals("Loan Installments Not Found", exception.getProblemDetail().getTitle());

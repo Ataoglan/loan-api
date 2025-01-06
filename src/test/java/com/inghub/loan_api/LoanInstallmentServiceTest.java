@@ -32,7 +32,6 @@ class LoanInstallmentServiceTest {
 
     @Test
     void getByLoan_ShouldReturnInstallments_WhenValidLoanAndCustomerIds() {
-        // Arrange
         Long loanId = 1L;
         Long customerId = 1L;
 
@@ -55,10 +54,8 @@ class LoanInstallmentServiceTest {
         when(loanInstallmentRepository.findByLoanIdAndCustomerId(loanId, customerId))
                 .thenReturn(mockInstallments);
 
-        // Act
         List<GetLoanInstallmentResponse> response = loanInstallmentService.getByLoan(loanId, customerId);
 
-        // Assert
         assertEquals(2, response.size());
         assertEquals(BigDecimal.valueOf(1000), response.get(0).getAmount());
         assertEquals(BigDecimal.valueOf(500), response.get(0).getPaidAmount());
@@ -71,17 +68,14 @@ class LoanInstallmentServiceTest {
 
     @Test
     void getByLoan_ShouldReturnEmptyList_WhenNoInstallmentsFound() {
-        // Arrange
         Long loanId = 2L;
         Long customerId = 2L;
 
         when(loanInstallmentRepository.findByLoanIdAndCustomerId(loanId, customerId))
                 .thenReturn(List.of());
 
-        // Act
         List<GetLoanInstallmentResponse> response = loanInstallmentService.getByLoan(loanId, customerId);
 
-        // Assert
         assertEquals(0, response.size());
         verify(loanInstallmentRepository, times(1)).findByLoanIdAndCustomerId(loanId, customerId);
     }

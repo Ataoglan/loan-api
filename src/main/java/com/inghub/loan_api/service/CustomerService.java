@@ -1,7 +1,10 @@
 package com.inghub.loan_api.service;
 
+import com.inghub.loan_api.exception.ProblemDetailsException;
 import com.inghub.loan_api.models.entity.CustomerEntity;
 import com.inghub.loan_api.repository.CustomerRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,6 +20,23 @@ public class CustomerService {
 
     public void updateCustomerLimit(Long customerId, BigDecimal updateLimit) {
         getById(customerId)
+                .ifPresentOrElse(
+                        customerEntity -> {
+                            customerEntity.setCreditLimit(updateLimit);
+                            customerRepository.save(customerEntity);
+                        },
+                        () -> {
+                            ProblemDetail problemDetail = ProblemDetail
+                                    .forStatusAndDetail(HttpStatus.NOT_FOUND,
+                                            "Customer not found with ID: " + customerId);
+                            problemDetail.setTitle("Customer Not Found");
+                            throw new ProblemDetailsException(problemDetail);
+                        }
+                );
+    }
+
+    public void recoverCustomerLimit(Long customerId, BigDecimal updateLimit) {
+        getById(customerId)
                 .ifPresent(customerEntity -> {
                     BigDecimal creditLimit = customerEntity.getCreditLimit();
                     creditLimit = creditLimit.add(updateLimit);
@@ -28,7 +48,6 @@ public class CustomerService {
 
     public void updateCustomerUsedCreditLimit(CustomerEntity customer, BigDecimal loanAmount) {
         customer.setUsedCreditLimit(customer.getUsedCreditLimit().add(loanAmount));
-        customer.setCreditLimit(customer.getCreditLimit().subtract(loanAmount));
         customerRepository.save(customer);
     }
 

@@ -20,7 +20,4 @@ public class SignupRequest {
 
     @NotNull(message = "password cannot be null")
     private String password;
-
-    @NotNull(message = "userid cannot be null")
-    private BigDecimal creditLimit;
 }

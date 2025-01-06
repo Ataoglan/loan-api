@@ -1,6 +1,7 @@
 package com.inghub.loan_api.models.entity;
 
 import com.inghub.loan_api.models.enums.NumberOfInstallments;
+import com.inghub.loan_api.utils.NumberOfInstallmentsConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -29,7 +30,7 @@ public class LoanEntity {
     @Column(name = "credit_limit")
     private BigDecimal loanAmount;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = NumberOfInstallmentsConverter.class)
     @Column(name = "installment_number")
     private NumberOfInstallments numberOfInstallment;
 

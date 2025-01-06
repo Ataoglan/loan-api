@@ -19,7 +19,7 @@ public class CreateLoanRequest {
     private BigDecimal loanAmount;
 
     @NotNull(message = "Installment number cannot be null")
-    private NumberOfInstallments installmentNumber;
+    private int installmentNumber;
 
     @DecimalMin(value = "0.1", message = "Interest rate must be at least 0.1")
     @DecimalMax(value = "0.5", message = "Interest rate must be at most 0.5")
