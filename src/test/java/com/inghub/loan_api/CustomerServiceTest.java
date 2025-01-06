@@ -40,7 +40,7 @@ class CustomerServiceTest {
 
         customerService.recoverCustomerLimit(customerId, updateLimit);
 
-        assertEquals(BigDecimal.valueOf(1500), customer.getCreditLimit());
+        assertEquals(BigDecimal.valueOf(1000), customer.getCreditLimit());
         verify(customerRepository, times(1)).save(customer);
     }
 

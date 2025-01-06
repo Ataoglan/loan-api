@@ -126,6 +126,7 @@ public class LoanService {
 
         return loans.stream().map(loan -> GetLoanResponse.builder()
                 .customerId(loan.getCustomer().getId())
+                .loanId(loan.getId())
                 .loanAmount(loan.getLoanAmount())
                 .numberOfInstallment(loan.getNumberOfInstallment().getValue())
                 .isPaid(loan.getIsPaid())

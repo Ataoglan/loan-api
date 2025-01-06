@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 @Builder
 public class GetLoanResponse {
     private Long customerId;
+    private Long loanId;
     private BigDecimal loanAmount;
     private int numberOfInstallment;
     private Boolean isPaid;

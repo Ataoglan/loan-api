@@ -38,10 +38,10 @@ public class CustomerService {
     public void recoverCustomerLimit(Long customerId, BigDecimal updateLimit) {
         getById(customerId)
                 .ifPresent(customerEntity -> {
-                    BigDecimal creditLimit = customerEntity.getCreditLimit();
-                    creditLimit = creditLimit.add(updateLimit);
+                    BigDecimal creditLimit = customerEntity.getUsedCreditLimit();
+                    creditLimit = creditLimit.subtract(updateLimit);
 
-                    customerEntity.setCreditLimit(creditLimit);
+                    customerEntity.setUsedCreditLimit(creditLimit);
                     customerRepository.save(customerEntity);
                 });
     }
